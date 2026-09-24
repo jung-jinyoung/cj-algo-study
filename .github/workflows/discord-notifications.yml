@@ -1,0 +1,177 @@
+name: Discord Notifications
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - closed
+
+  pull_request_review:
+    types:
+      - submitted
+      - dismissed
+
+permissions:
+  contents: read
+
+jobs:
+  pull-request-notification:
+    name: Pull Request Notification
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send PR notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_PR_WEBHOOK }}
+          ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+
+        run: |
+          if [[ "$ACTION" == "opened" ]]; then
+            EVENT_TITLE="📬 새로운 PR이 등록되었습니다"
+            EVENT_DESCRIPTION="리뷰가 필요한 새로운 PR이 등록되었습니다."
+            EVENT_COLOR="3447003"
+          elif [[ "$ACTION" == "closed" && "$MERGED" == "true" ]]; then
+            EVENT_TITLE="🎉 PR이 병합되었습니다"
+            EVENT_DESCRIPTION="리뷰를 마친 PR이 성공적으로 병합되었습니다."
+            EVENT_COLOR="5763719"
+          else
+            EVENT_TITLE="🚫 PR이 종료되었습니다"
+            EVENT_DESCRIPTION="PR이 병합되지 않고 종료되었습니다."
+            EVENT_COLOR="15548997"
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg title "$EVENT_TITLE" \
+            --arg description "$EVENT_DESCRIPTION" \
+            --arg pr_title "#${PR_NUMBER} ${PR_TITLE}" \
+            --arg pr_url "$PR_URL" \
+            --arg author "$PR_AUTHOR" \
+            --arg branch "${HEAD_BRANCH} → ${BASE_BRANCH}" \
+            --argjson color "$EVENT_COLOR" \
+            '{
+              embeds: [
+                {
+                  title: $title,
+                  description: $description,
+                  color: $color,
+                  fields: [
+                    {
+                      name: "PR",
+                      value: ("[" + $pr_title + "](" + $pr_url + ")"),
+                      inline: false
+                    },
+                    {
+                      name: "작성자",
+                      value: $author,
+                      inline: true
+                    },
+                    {
+                      name: "브랜치",
+                      value: $branch,
+                      inline: true
+                    }
+                  ]
+                }
+              ]
+            }')
+
+          curl \
+            --fail-with-body \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"
+
+  review-notification:
+    name: Review Notification
+    if: >-
+      github.event_name == 'pull_request_review' &&
+      github.event.pull_request.base.ref == 'master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send review notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_REVIEW_WEBHOOK }}
+          ACTION: ${{ github.event.action }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEWER: ${{ github.event.review.user.login }}
+          REVIEW_URL: ${{ github.event.review.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+        run: |
+          if [[ "$ACTION" == "dismissed" ]]; then
+            EVENT_TITLE="🗑️ 리뷰가 취소되었습니다"
+            EVENT_DESCRIPTION="${REVIEWER}님의 리뷰가 무효화되었습니다."
+            EVENT_COLOR="9807270"
+          elif [[ "$REVIEW_STATE" == "approved" ]]; then
+            EVENT_TITLE="✅ 리뷰가 승인되었습니다"
+            EVENT_DESCRIPTION="${REVIEWER}님이 PR을 승인했습니다."
+            EVENT_COLOR="5763719"
+          elif [[ "$REVIEW_STATE" == "changes_requested" ]]; then
+            EVENT_TITLE="🔄 수정 요청이 등록되었습니다"
+            EVENT_DESCRIPTION="${REVIEWER}님이 코드 수정을 요청했습니다."
+            EVENT_COLOR="15105570"
+          else
+            EVENT_TITLE="💬 리뷰가 등록되었습니다"
+            EVENT_DESCRIPTION="${REVIEWER}님이 리뷰 의견을 등록했습니다."
+            EVENT_COLOR="3447003"
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg title "$EVENT_TITLE" \
+            --arg description "$EVENT_DESCRIPTION" \
+            --arg pr_title "#${PR_NUMBER} ${PR_TITLE}" \
+            --arg pr_url "$PR_URL" \
+            --arg review_url "$REVIEW_URL" \
+            --arg reviewer "$REVIEWER" \
+            --arg state "$REVIEW_STATE" \
+            --argjson color "$EVENT_COLOR" \
+            '{
+              embeds: [
+                {
+                  title: $title,
+                  description: $description,
+                  color: $color,
+                  fields: [
+                    {
+                      name: "PR",
+                      value: ("[" + $pr_title + "](" + $pr_url + ")"),
+                      inline: false
+                    },
+                    {
+                      name: "리뷰어",
+                      value: $reviewer,
+                      inline: true
+                    },
+                    {
+                      name: "상태",
+                      value: $state,
+                      inline: true
+                    },
+                    {
+                      name: "리뷰",
+                      value: ("[리뷰 확인하기](" + $review_url + ")"),
+                      inline: false
+                    }
+                  ]
+                }
+              ]
+            }')
+
+          curl \
+            --fail-with-body \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"
