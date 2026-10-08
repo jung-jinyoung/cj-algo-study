@@ -23,7 +23,7 @@ class Solution {
         
         // 모든 숫자가 0이면 
         // 0000 방지 
-        if (arr[0] == "0") {
+        if (arr[0].equals("0")) {
             return arr[0];
         }
         
