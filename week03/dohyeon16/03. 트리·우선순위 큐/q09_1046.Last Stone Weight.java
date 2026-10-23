@@ -13,7 +13,7 @@
    -> PriorityQueue = 우선순위가 높은 값을 먼저 꺼내는 자료구조
    3. Collections.reverseOrder()를 사용해 큰 값이 먼저 나오는 최대 힙으로 만든다.
    -> 기본 PriorityQueue = 작은 값부터 꺼내는 최소 힙
-   -> reverseOrder() = 큰 값부터 꺼내는 최대 힙
+   -> reverseOrder() = 큰 값부터 꺼내는 최대 힙 (내림차순)
    4. stones 배열의 모든 돌을 PriorityQueue에 추가한다.
    -> offer() = 큐에 값 추가
    5. 돌이 2개 이상 남아 있는 동안 반복한다.
