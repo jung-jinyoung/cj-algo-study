@@ -2,6 +2,8 @@
 #       꺼낼 때마다 남은 숫자 하나씩을 골라 뒤에 붙인 갈래를 '남은 숫자 개수만큼' 넣는다.
 #       남은 숫자가 없으면 순열 하나 완성.
 # 시간복잡도: O(N × N!)  — 순열 N!개, 각각 만들 때 최대 N개 복사
+# 가끔 씩 나올 수 있다.
+# 파이썬은 product, itertools 순열 순회 가능한 리스트, 덱, permutations 
 
 class Solution:
     def permute(self, nums: list[int]) -> list[list[int]]:
