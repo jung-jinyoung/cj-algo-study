@@ -3,6 +3,7 @@
 #       칠한 칸은 더 이상 orig가 아니므로 '칠하기'가 곧 방문 표시 역할을 한다.
 #       (orig == color면 칠해도 표시가 안 돼 무한 반복이 되므로 바로 반환)
 # 시간복잡도: O(R × C)  — 모든 칸을 최대 한 번씩 칠하고 꺼냄
+# Deque 써보기 array Deque
 
 class Solution:
     def floodFill(self, image: list[list[int]], sr: int, sc: int, color: int) -> list[list[int]]:
